@@ -1,13 +1,288 @@
 # Le problème du voyageur de commerce
 
 ## Installation des packets
+On commence par installer les packets nécessaires au bon fonctionnement du code.
 ```{r}
 install.packages(c("maps","sp","Rcpp","TSP","microbenchmark","multcomp"))
+install.packages("packages/TSPpackage_2.0.zip", repos = NULL, type = "bin")
 ```
+On charge ensuite les packets dans le projets.
 ```{r}
-for (pkg in c("maps","sp","Rcpp","TSP","microbenchmark","multcomp")) {
+for (pkg in c("maps","sp","Rcpp","TSP","microbenchmark","multcomp", "TSPpackage")) {
   library(pkg, character.only = TRUE)
 }
 
+```
 
+## Setup initial
+
+On fixe la seed pour avoir des résultats reproductibles.
+```{r}
+set.seed(287)
+```
+On charge aussi les fichiers CSV contenant les données.
+```{r}
+villes <- read.csv("data/DonneesGPSvilles.csv", dec = "." , header = TRUE, sep = ";" , quote = "\"")
+distances <- read.csv("data/DonneesTSP.csv", dec = ".", header = TRUE, sep = ",", quote = "\"")
+
+```
+
+# 0. Visualisation de chemins
+
+Lecture du fichier des villes :
+
+```{r, echo=TRUE}
+villes <- read.csv('data/DonneesGPSvilles.csv',header=TRUE,dec='.',sep=';',quote="\"")
+str(villes)
+```
+Représentation des chemins par plus proches voisins et du chemin optimal :
+```{r, echo=TRUE}
+coord <- cbind(villes$longitude,villes$latitude)
+dist <- distanceGPS(coord)
+voisins <- TSPnearest(dist)
+
+pathOpt <- c(1,8,9,4,21,13,7,10,3,17,16,20,6,19,15,18,11,5,22,14,12,2)
+
+par(mfrow=c(1,2),mar=c(1,1,2,1))
+plotTrace(coord[voisins$chemin,], title='Plus proches voisins')
+plotTrace(coord[pathOpt,], title='Chemin optimal')
+```
+
+
+Les longueurs des trajets (à vol d'oiseau) valent respectivement, pour la méthode des plus proches voisins :
+```{r, echo=FALSE}
+voisins$longueur
+```
+et pour la méthode optimale :
+```{r, echo=FALSE}
+calculeLongueur(dist,pathOpt)
+```
+
+Ceci illustre bien l'intérêt d'un algorithme de voyageur de commerce. Nous allons dans la suite étudier les performances de cet algorithme.
+
+
+# 1. Comparaison d'algorithmes
+
+Nombre de sommets fixes et graphes "identiques".
+
+```{r, echo=TRUE}
+n <- 10 #nombre de noeud
+
+#example de lancement unitaire
+sommets <- data.frame(x = runif(n), y = runif(n))
+couts <- distance(sommets)
+TSPsolve(couts,'nearest')
+```
+
+```{r, echo=TRUE}
+
+#calcul de plusieurs simulation de graphes qui seront analysées par les 5 méthodes
+nsimu <- 50 #nombre de simu
+methods <- c('arbitrary_insertion', 'repetitive_nn','two_opt','nearest','branch')
+res <- array(0,dim=c(nsimu,length(methods)))
+for(i in 1:nsimu){
+  points <- data.frame(x = runif(n), y = runif(n))
+  dist <- distance(points)
+  res[i,] <- (sapply(methods, function(m){TSPsolve(dist,m)}))
+}
+colnames(res) <- c('insertion','repet_nn','two_opt','nearest','branch')
+
+```
+
+## 1.1. Longueur des chemins
+
+Comparaison des longueurs de différentes méthodes :
+
+   * boxplots
+
+   * test entre 'nearest' et 'branch'
+
+   * tests 2 à 2
+
+```{r, echo=TRUE}
+res2 <- as.vector(res)
+meth_names <- c('insertion','repetitive_nn','two_opt','nearest','branch')
+methods2 <- rep(meth_names,each=nsimu)
+boxplot(res2~methods2)
+```
+
+Nous remarquons que la méthode 'branch' est la plus efficace. En effet, sa médiane est la plus faible et son interquartile est le plus petit. De plus, son quartile supérieur est très petit donc plus de valeurs supérieures à la médiane sont proches de celle-ci.
+Ensuite la méthode insertion est la seconde plus efficace, très similaire à la méthode 'branch' avec un quartile supérieur un peu plus grand.
+La méthode 'nearest' est la moins efficace, avec une médiane très élevée et un quartile supérieur très grand. Nous observons également des valeurs extrêmes dispersées.
+
+### Test entre 'nearest' et 'branch'
+
+Soient $m_nn$ et $m_b$ les espérences respectives des longueurs des chemins obtenus par les méthodes 'nearest' et 'branch'.
+
+On teste l'hypothèse $(H_0) : m_nn - m_b <= 0 $ contre l'hypothèse $(H_1) : m_nn - m_b > 0$
+
+
+```{r, echo=TRUE}
+t.test(res[,4],res[,5],alternative='greater')
+```
+Après la réalisation du test de Welch pour comparer les moyennes des méthodes 'nearest' et 'branch', nous remaquons que la moyenne de la méthode 'nearest' est statistiquement significativement supérieure à celle de la méthode 'branch'.
+
+La statistique de test (t) était de 4.0247, indiquant à quel point la différence observée entre les moyennes était éloignée de zéro, ajustée en fonction de la taille des échantillons et de leur variance.
+
+La p-value est très faible (5.772e-05), suggérant qu'il est très improbable d'observer une différence aussi extrême que celle que nous avons constatée, sous l'hypothèse nulle que la vraie différence entre les moyennes est inférieure ou égale à zéro.
+
+L'intervalle de confiance pour la différence des moyennes va de 0.1778512 à l'infini (Inf), indiquant une supériorité probable de la méthode 'nearest'. En conclusion, avec une p-value très faible, nous avons des preuves statistiques pour rejeter l'hypothèse nulle et conclure que la moyenne de la méthode 'nearest' est statistiquement significativement supérieure à celle de la méthode 'branch'.
+
+### Tests 2 à 2
+
+On teste l'hypothèse $(H_0) : m_i - m_j = 0 $ contre l'hypothèse $(H_1) : m_i - m_j \neq 0$ pour $i \neq j$ et $i,j \in \{1,2,3,4,5\}$
+
+```{r, echo=TRUE}
+pairwise.t.test(res2, methods2, p.adjust.method = 'bonferroni')
+```
+Interpretation des résultats :
+
+
+## 1.2. Temps de calcul
+
+Comparaison des temps à l'aide du package microbenchmark.
+
+Exemple d'application de microbenchmark :
+```{r, echo=TRUE}
+microbenchmark(sqrt(x),x^0.5, times=100, setup={x <- runif(1)})
+```
+Exemple d'application de la fonction TSPsolve :
+# Application du microbenchMark sur les 5 méthodes
+
+```{r, echo=TRUE}
+n <- 10 #nombre de noeud
+
+microbenchmark(TSPsolve(dist,method='arbitrary_insertion'),TSPsolve(dist,method='repetitive_nn'),TSPsolve(dist,method='two_opt'),TSPsolve(dist,method = 'nearest'),TSPsolve(dist, method = 'branch'),times=20,setup={points <- data.frame(x = runif(n), y = runif(n)) ; dist <- distance(points)})
+
+#boxplot(moyennes)
+```
+
+
+# 2. Etude e la complexité de l'algorithme Branch and Bound
+
+## 2.1. Comportement par rapport au nombre de sommets : premier modèle
+
+Nous construisons un modèle de régression linéaire du temps d'execution de Branch & Bound en fonction du nombre de sommet n.
+
+```{r}
+seqn <- seq(4,20,1)
+temps <- array(0,dim=c(length(seqn),10))
+  for(i in seq_along(seqn))
+  {
+    temps[i,]<-microbenchmark(TSPsolve(couts, method = 'branch'), times = 10,
+                                                 setup = { n <- seqn[i]; couts <- distance(cbind(x = runif(n), y = runif(n))) })$time
+  }
+temps
+```
+# representer la variance des temps d'exécution en fonction de n
+```{r}
+par(mfrow=c(1,2)) # 2 graphiques sur 1 ligne
+matplot(seqn, temps, xlab='n', ylab='temps')
+matplot(seqn, log(temps)^2, xlab='n', ylab=expression(log(temps)^2))
+
+
+```
+
+```{r,echo=TRUE}
+vect_temps<- log(as.vector(temps))^2
+vect_dim <- rep(seqn,10)
+temps.lm <- lm(vect_temps~vect_dim)
+summary(temps.lm)
+```
+
+```{r,echo=TRUE}
+par(mfrow=c(2,2))
+plot(temps.lm)
+plot(temps.lm,which=4) #pour avoir les disctances de cooks
+```
+
+
+Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
+
+Analyse de la validité du modèle :
+
+  * pertinence des coefficients et du modèle,
+
+  * étude des hypothèses sur les résidus.
+```{r,Echo=TRUE}
+shapiro.test(residuals(temps.lm))
+```
+## 2.2. Comportement par rapport au nombre de sommets : étude du comportement moyen
+
+Récupération du temps moyen.
+
+```{r,echo=TRUE}
+temps.moy <- rowMeans(temps)
+temps.moy
+```
+Réaliser l’ajustement du modèle de régression linéaire simple gaussien de log(temps.moy)ˆ2 en fonction de
+seqn. Récupérer les principales statistiques. Faire l’étude des résidus. Conclure quant à la validité du modèle.
+
+```{r,echo=TRUE}
+temps.moy.lm <- lm(log(temps.moy)^2~seqn)
+summary(temps.moy.lm)
+```
+Conlusion : le modèle est valide car les coefficients sont significatifs et le R² est proche de 1.
+Mais également, les hypothèses sur les résidus sont vérifiées car le test de shapiro est supérieur à 0.05.
+
+
+```{r,echo=TRUE}
+```
+Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de $n$.
+
+Analyse de la validité du modèle :
+
+  * pertinence des coefficients et du modèle,
+
+  * étude des hypothèses sur les résidus.
+
+
+
+## 2.3. Comportement par rapport à la structure du graphe
+
+Lecture du fichier 'DonneesTSP.csv'.
+```{r,echo=TRUE}
+donnees <- read.csv(file='data/DonneesTSP.csv',header=TRUE)
+data.graph <- as.data.frame(donnees)
+```
+
+On construit ensuite le modèle de régression linéaire de $log(tps)$ par rapport à $\sqrt{dim}$ et toutes les autres variables de data.graph.
+```{r,echo=TRUE}
+data.graph$log.tps <- log(donnees$tps)#log(donnees$tps)^2
+data.graph$sqrt.dim <- sqrt(donnees$dim)
+data.graph$dim <- c()
+data.graph$tps <- c()
+```
+Ensuite on trace els modèles de régression linéaires demandés.
+```{r, echo = TRUE}
+regressions <- list()
+
+for (var in names(data.graph)) {
+    if (var == "log.tps") {
+        next
+    }
+    regressions[[var]] <- lm(log.tps ~ data.graph[[var]], data = data.graph)
+}
+
+par(mfrow = c(3, 2))
+for (var in names(data.graph)) {
+    if (var == "log.tps") {
+        next
+    }
+    plot(regressions[[var]], main = var, which = 1:5)
+}
+```
+```{r}
+regressions.group <- lm(log.tps ~ ., data = data.graph)
+summary(regressions.group)
+par(mfrow = c(3, 2))
+plot(regressions.group, which = 1:6)
+```
+
+### Mise en oeuvre de la selection de variables
+
+On sélectionne les variables qui sont le plus pertinente au modèle de régression linéaire.
+```{r, echo = TRUE}
+step(regressions.group)
+```
 ```
