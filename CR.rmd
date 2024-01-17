@@ -20,12 +20,6 @@ On fixe la seed pour avoir des résultats reproductibles.
 ```{r}
 set.seed(287)
 ```
-On charge aussi les fichiers CSV contenant les données.
-```{r}
-villes <- read.csv("data/DonneesGPSvilles.csv", dec = "." , header = TRUE, sep = ";" , quote = "\"")
-distances <- read.csv("data/DonneesTSP.csv", dec = ".", header = TRUE, sep = ",", quote = "\"")
-
-```
 
 # 0. Visualisation de chemins
 
@@ -58,22 +52,43 @@ et pour la méthode optimale :
 calculeLongueur(dist,pathOpt)
 ```
 
-Ceci illustre bien l'intérêt d'un algorithme de voyageur de commerce. Nous allons dans la suite étudier les performances de cet algorithme.
+Ceci illustre bien l'intérêt d'un algorithme de calcul de chamin optimal pour un voyageur de commerce. Nous allons dans la suite étudier les performances de cet algorithme.
 
 
 # 1. Comparaison d'algorithmes
 
-Nombre de sommets fixes et graphes "identiques".
-
+On commence par créer un graphe de 10 noeuds, auquels on associe des coordonnées qui suivent une loi uniforme $U[0,1]$.
 ```{r, echo=TRUE}
 n <- 10 #nombre de noeud
 
 #example de lancement unitaire
 sommets <- data.frame(x = runif(n), y = runif(n))
+```
+
+Ensuite, on calcule la matrice des distances entre les noeuds grâce à la fonction distance.
+```{r, echo=TRUE}
 couts <- distance(sommets)
+couts
+```
+Ensuite, on effectue un premier test pour calculer un chemin pour le voyageur de commerce. La méthode retenue ici est la méthode nearest, qui consiste à choisir le noeud le plus proche du noeud courant.
+```{r, echo=TRUE}
 TSPsolve(couts,'nearest')
 ```
 
+Par la suite, nous allons comparer les performances de 5 méthodes de résolution du problème du voyageur de commerce. Ces méthodes sont les suivantes :
+
+   * arbitrary_insertion : insertion arbitraire
+
+   * repetitive_nn : plus proche voisin répétitif
+
+   * two_opt : 2-opt
+
+   * nearest : plus proche voisin
+
+   * branch : branch and bound
+
+On crée 50 graphes de 10 noeuds, auquels on associe des coordonnées qui suivent une loi uniforme $U[0,1]$.
+Les résultats sont alors stockés dans un tableau, triés par méthode.
 ```{r, echo=TRUE}
 
 #calcul de plusieurs simulation de graphes qui seront analysées par les 5 méthodes
@@ -91,14 +106,7 @@ colnames(res) <- c('insertion','repet_nn','two_opt','nearest','branch')
 
 ## 1.1. Longueur des chemins
 
-Comparaison des longueurs de différentes méthodes :
-
-   * boxplots
-
-   * test entre 'nearest' et 'branch'
-
-   * tests 2 à 2
-
+Chacune des méthodes de résolution du problème du voyageur de commerce renvoie un chemin, dont on a calculé la longueur précédemment.
 ```{r, echo=TRUE}
 res2 <- as.vector(res)
 meth_names <- c('insertion','repetitive_nn','two_opt','nearest','branch')
@@ -106,7 +114,7 @@ methods2 <- rep(meth_names,each=nsimu)
 boxplot(res2~methods2)
 ```
 
-Nous remarquons que la méthode 'branch' est la plus efficace. En effet, sa médiane est la plus faible et son interquartile est le plus petit. De plus, son quartile supérieur est très petit donc plus de valeurs supérieures à la médiane sont proches de celle-ci.
+Nous remarquons que la méthode 'branch' est la plus efficace en terme de longueur de chemin. En effet, sa médiane est la plus faible et son interquartile est le plus petit. De plus, son quartile supérieur est très petit donc plus de valeurs supérieures à la médiane sont proches de celle-ci.
 Ensuite la méthode insertion est la seconde plus efficace, très similaire à la méthode 'branch' avec un quartile supérieur un peu plus grand.
 La méthode 'nearest' est la moins efficace, avec une médiane très élevée et un quartile supérieur très grand. Nous observons également des valeurs extrêmes dispersées.
 
@@ -283,6 +291,8 @@ plot(regressions.group, which = 1:6)
 
 On sélectionne les variables qui sont le plus pertinente au modèle de régression linéaire.
 ```{r, echo = TRUE}
-step(regressions.group)
+regressions.aiced <- step(regressions.group)
+plot(regressions.aiced)
+summary(regressions.aiced)
 ```
 ```
