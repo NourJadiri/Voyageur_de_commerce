@@ -1,0 +1,13 @@
+# Le problème du voyageur de commerce
+
+## Installation des packets
+```{r}
+install.packages(c("maps","sp","Rcpp","TSP","microbenchmark","multcomp"))
+```
+```{r}
+for (pkg in c("maps","sp","Rcpp","TSP","microbenchmark","multcomp")) {
+  library(pkg, character.only = TRUE)
+}
+
+
+```
