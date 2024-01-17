@@ -3,7 +3,7 @@
 ## Installation des packets
 On commence par installer les packets nécessaires au bon fonctionnement du code.
 ```{r}
-install.packages(c("maps","sp","Rcpp","TSP","microbenchmark","multcomp"))
+install.packages(c("maps","sp","Rcpp","TSP","microbenchmark","multcomp"), repos = "http://cran.rstudio.com")
 install.packages("packages/TSPpackage_2.0.zip", repos = NULL, type = "bin")
 ```
 On charge ensuite les packets dans le projets.
@@ -25,12 +25,11 @@ set.seed(287)
 
 Lecture du fichier des villes :
 
-```{r, echo=TRUE}
+```{r}
 villes <- read.csv('data/DonneesGPSvilles.csv',header=TRUE,dec='.',sep=';',quote="\"")
-str(villes)
 ```
 Représentation des chemins par plus proches voisins et du chemin optimal :
-```{r, echo=TRUE}
+```{r}
 coord <- cbind(villes$longitude,villes$latitude)
 dist <- distanceGPS(coord)
 voisins <- TSPnearest(dist)
@@ -43,11 +42,11 @@ plotTrace(coord[pathOpt,], title='Chemin optimal')
 ```
 
 
-Les longueurs des trajets (à vol d'oiseau) valent respectivement, pour la méthode des plus proches voisins :
+Les longueurs des trajets (à vol d'oiseau) valent respectivement, pour la méthode des plus proches voisins est de `4303.568`
 ```{r, echo=FALSE}
 voisins$longueur
 ```
-et pour la méthode optimale :
+et pour la méthode optimale est de `3793.06`
 ```{r, echo=FALSE}
 calculeLongueur(dist,pathOpt)
 ```
@@ -57,7 +56,7 @@ Ceci illustre bien l'intérêt d'un algorithme de calcul de chamin optimal pour 
 
 # 1. Comparaison d'algorithmes
 
-On commence par créer un graphe de 10 noeuds, auquels on associe des coordonnées qui suivent une loi uniforme $U[0,1]$.
+On commence par créer un graphe de 10 nœuds, auquels on associe des coordonnées qui suivent une loi uniforme $U[0,1]$.
 ```{r, echo=TRUE}
 n <- 10 #nombre de noeud
 
@@ -66,11 +65,11 @@ sommets <- data.frame(x = runif(n), y = runif(n))
 ```
 
 Ensuite, on calcule la matrice des distances entre les noeuds grâce à la fonction distance.
-```{r, echo=TRUE}
+```{r}
 couts <- distance(sommets)
-couts
 ```
-Ensuite, on effectue un premier test pour calculer un chemin pour le voyageur de commerce. La méthode retenue ici est la méthode nearest, qui consiste à choisir le noeud le plus proche du noeud courant.
+
+On effectue un premier test pour calculer un chemin pour le voyageur de commerce. La méthode retenue ici est la méthode nearest, qui consiste à choisir le noeud le plus proche du noeud courant.
 ```{r, echo=TRUE}
 TSPsolve(couts,'nearest')
 ```
@@ -88,11 +87,12 @@ Par la suite, nous allons comparer les performances de 5 méthodes de résolutio
    * branch : branch and bound
 
 On crée 50 graphes de 10 noeuds, auquels on associe des coordonnées qui suivent une loi uniforme $U[0,1]$.
+On calcule ensuite la longueur des chemins obtenus par les 5 méthodes de résolution du problème du voyageur de commerce.
 Les résultats sont alors stockés dans un tableau, triés par méthode.
 ```{r, echo=TRUE}
 
 #calcul de plusieurs simulation de graphes qui seront analysées par les 5 méthodes
-nsimu <- 50 #nombre de simu
+nsimu <- 50 #nombre de simulations
 methods <- c('arbitrary_insertion', 'repetitive_nn','two_opt','nearest','branch')
 res <- array(0,dim=c(nsimu,length(methods)))
 for(i in 1:nsimu){
@@ -111,11 +111,14 @@ Chacune des méthodes de résolution du problème du voyageur de commerce renvoi
 res2 <- as.vector(res)
 meth_names <- c('insertion','repetitive_nn','two_opt','nearest','branch')
 methods2 <- rep(meth_names,each=nsimu)
+
+# get the mean of each method
 boxplot(res2~methods2)
 ```
 
-Nous remarquons que la méthode 'branch' est la plus efficace en terme de longueur de chemin. En effet, sa médiane est la plus faible et son interquartile est le plus petit. De plus, son quartile supérieur est très petit donc plus de valeurs supérieures à la médiane sont proches de celle-ci.
-Ensuite la méthode insertion est la seconde plus efficace, très similaire à la méthode 'branch' avec un quartile supérieur un peu plus grand.
+Nous remarquons que la méthode 'branch' est la plus efficace en terme de longueur de chemin. En effet, sa médiane est la plus faible et son interquartile est le plus petit. De plus, son quartile supérieur est très petit, donc plus de valeurs supérieures à la médiane sont proches de celle-ci.
+
+Ensuite la méthode insertion est la seconde plus efficace, très similaire à la méthode 'branch' avec un quartile supérieur un peu plus grand, et une valeur minimale plus basse que branch.
 La méthode 'nearest' est la moins efficace, avec une médiane très élevée et un quartile supérieur très grand. Nous observons également des valeurs extrêmes dispersées.
 
 ### Test entre 'nearest' et 'branch'
@@ -128,22 +131,36 @@ On teste l'hypothèse $(H_0) : m_nn - m_b <= 0 $ contre l'hypothèse $(H_1) : m_
 ```{r, echo=TRUE}
 t.test(res[,4],res[,5],alternative='greater')
 ```
-Après la réalisation du test de Welch pour comparer les moyennes des méthodes 'nearest' et 'branch', nous remaquons que la moyenne de la méthode 'nearest' est statistiquement significativement supérieure à celle de la méthode 'branch'.
+Après la réalisation du test de Welch pour comparer les moyennes des méthodes 'nearest' et 'branch', nous remarquons que la longueur moyenne calculée par la méthode 'nearest' est statistiquement significativement supérieure à celle de la méthode 'branch' 4.59 vs 3.78.
 
-La statistique de test (t) était de 4.0247, indiquant à quel point la différence observée entre les moyennes était éloignée de zéro, ajustée en fonction de la taille des échantillons et de leur variance.
+La statistique de test (t) est de 4.0247, indiquant à quel point la différence observée entre les moyennes est éloignée de zéro, ajustée en fonction de la taille des échantillons et de leur variance.
 
-La p-value est très faible (5.772e-05), suggérant qu'il est très improbable d'observer une différence aussi extrême que celle que nous avons constatée, sous l'hypothèse nulle que la vraie différence entre les moyennes est inférieure ou égale à zéro.
+La p-value est très faible (4.958e-12), indiquant une forte preuve contre l'hypothèse nulle. Nous pouvons donc rejeter l'hypothèse nulle et conclure que la longueur moyenne de la méthode 'nearest' est statistiquement significativement supérieure à celle de la méthode 'branch'.
 
-L'intervalle de confiance pour la différence des moyennes va de 0.1778512 à l'infini (Inf), indiquant une supériorité probable de la méthode 'nearest'. En conclusion, avec une p-value très faible, nous avons des preuves statistiques pour rejeter l'hypothèse nulle et conclure que la moyenne de la méthode 'nearest' est statistiquement significativement supérieure à celle de la méthode 'branch'.
+L'intervalle de confiance pour la différence des moyennes va de 0.6385702 à l'infini (Inf), indiquant qu'à partir de cet intervalle, il y a 95% de chances que la $m_nn > m_b$.
+
+Cela montre que en effet la méthode 'branch' est la plus efficace en termes de longueur de chemin que la méthode 'nearest'.
 
 ### Tests 2 à 2
 
-On teste l'hypothèse $(H_0) : m_i - m_j = 0 $ contre l'hypothèse $(H_1) : m_i - m_j \neq 0$ pour $i \neq j$ et $i,j \in \{1,2,3,4,5\}$
+On teste l'hypothèse $(H_0) : m_i - m_j = 0$ contre l'hypothèse $(H_1) : m_i - m_j \neq 0$ pour $i \neq j$ et $i,j \in \{1,2,3,4,5\}$
 
 ```{r, echo=TRUE}
 pairwise.t.test(res2, methods2, p.adjust.method = 'bonferroni')
 ```
-Interpretation des résultats :
+Dans la sortie de ce test pairwise, des comparaisons ont été effectuées entre différentes méthodes (branch, insertion, nearest, repetitive_nn, two_opt) à l'aide de tests t avec des écarts-types groupés, et les p-values résultantes ont été ajustées en utilisant la méthode de Bonferroni.
+
+Examinons quelques valeurs spécifiques pour illustrer l'interprétation :
+
+La p-value pour la comparaison entre "nearest" et "branch" est de 0.00062. Cette p-value est inférieure au seuil de signification ajusté par la correction de Bonferroni. Par conséquent, on peut conclure qu'il existe une différence statistiquement significative entre les méthodes "nearest" et "branch".
+
+En revanche, pour la comparaison entre "insertion" et "branch", la p-value est de 1.00000, ce qui est bien au-dessus du seuil ajusté. On ne peut pas rejeter l'hypothèse nulle dans ce cas, suggérant qu'il n'y a pas de différence statistiquement significative entre "insertion" et "branch".
+
+La comparaison entre "repetitive_nn" et "nearest" a une p-value de 0.02144, ce qui est inférieur au seuil ajusté. On peut conclure qu'il existe une différence statistiquement significative entre ces deux méthodes.
+
+Pour "two_opt" vs "repetitive_nn", la p-value est de 0.23944, ce qui est au-dessus du seuil ajusté. On ne rejette pas l'hypothèse nulle dans ce cas, suggérant qu'il n'y a pas de différence statistiquement significative entre ces deux méthodes.
+
+En résumé, l'ajustement de Bonferroni a été appliqué pour contrôler le taux global d'erreur de type I lors de multiples comparaisons. Les valeurs p inférieures au seuil ajusté suggèrent des différences statistiquement significatives entre les méthodes correspondantes, tandis que les valeurs p plus élevées suggèrent l'absence de différences significatives
 
 
 ## 1.2. Temps de calcul
