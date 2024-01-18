@@ -51,7 +51,7 @@ et pour la méthode optimale est de `3793.06`
 calculeLongueur(dist,pathOpt)
 ```
 
-Ceci illustre bien l'intérêt d'un algorithme de calcul de chamin optimal pour un voyageur de commerce. Nous allons dans la suite étudier les performances de cet algorithme.
+Ceci illustre bien l'intérêt d'un algorithme de calcul de chemin optimal pour un voyageur de commerce, la distance étant bien plus petite. Nous allons dans la suite étudier les performances de cet algorithme.
 
 
 # 1. Comparaison d'algorithmes
@@ -181,9 +181,11 @@ microbenchmark(TSPsolve(dist,method='arbitrary_insertion'),TSPsolve(dist,method=
 
 #boxplot(moyennes)
 ```
+On remarque alors directement, que les deux algorithmes les plus performants en terme de vitesse sont "arbitrary-insertion", "two_opt" et "nearest". Cependant, ces 3 algorithmes sont aussi ceux qui sont le moins efficaces, fournissant de moins bons résultats. Un cran au dessus, il y a l'algorithme "repetitive_nn" qui fournit une meilleure solution mais qui est tout de même plus long que les 3 autres algorithmes. Finalement, le plus lent des algorithmes est le "branch", cependant c'est aussi celui qui fournit la meilleure solution. 
 
+Il y a donc un compromis à réaliser, en fonction de la qualité de la solution qu'on recherche et du temps que l'on est prêt à dédier à la recherche de cette solution. 
 
-# 2. Etude e la complexité de l'algorithme Branch and Bound
+# 2. Etude de la complexité de l'algorithme Branch and Bound
 
 ## 2.1. Comportement par rapport au nombre de sommets : premier modèle
 
@@ -202,7 +204,7 @@ temps
 # representer la variance des temps d'exécution en fonction de n
 ```{r}
 par(mfrow=c(1,2)) # 2 graphiques sur 1 ligne
-matplot(seqn, temps, xlab='n', ylab='temps')
+matplot(seqn, temps, xlab='n', ylab='temps', ylim=c(0,8*10^8))
 matplot(seqn, log(temps)^2, xlab='n', ylab=expression(log(temps)^2))
 
 
@@ -214,13 +216,18 @@ vect_dim <- rep(seqn,10)
 temps.lm <- lm(vect_temps~vect_dim)
 summary(temps.lm)
 ```
+La regression linéaire du calcul de log(temps)^2, serait donc égale à 68.6174+14.5711*n.
+On remarque que les p-valeurs de (Intercept) et de vect_dim sont très proches de zéro, suggérant la significativité de ces coefficients.
+Le R2 ajusté est égal à 0.8654, il est donc assez proche de 1 ce qui signifie que le modèle de regression linéaire explique en grande partie le comportement de log(temps)^2.
+La p-valeur associée au test de Fisher signifie bien que la variable vect_dim améliore grandement l'ajustement par rapport à un modèle sans cette variable. 
+Le nombre de sommets n a donc un impact significatif sur le carré du logarithme du temps d'exécution de l'algorithme "branch and bound".
 
 ```{r,echo=TRUE}
 par(mfrow=c(2,2))
 plot(temps.lm)
 plot(temps.lm,which=4) #pour avoir les disctances de cooks
 ```
-
+On peut déjà remarquer que les points sur le graphique Residuals vs Fitted sont bien répartis autour de 0, ce qui valide un peu plus le modèle utilisé. De plus, le graphique Q-Q residuals nous montre que les points suivent une ligne droite, indiquant une distribution normale des résidus. Ensuite, on voit qu'il y a une dispersion uniforme des résidus par rapport aux valeurs ajustées grâce au graphique Scale-Location. Finalement, on voit que seulement trois points possède une distance de Cook plus élevée que les autres, cependant leur valeur reste bien en-deça de 1, ils n'influencent donc pas disproportionnement le modèle.
 
 Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
 
@@ -232,6 +239,8 @@ Analyse de la validité du modèle :
 ```{r,Echo=TRUE}
 shapiro.test(residuals(temps.lm))
 ```
+Le test de Shapiro-Wilk est utilisé pour évaluer si les résidus d'un modèle suivent une distribution normale, ici d'après la p-valeur que l'on obtient qui est très proche de 0, on peut rejeter l'hypothèse nulle, signifiant ainsi que les résidus ne suivent donc pas une distribution normale. 
+A cause de ces résultats du test de Shapiro-Wilk, qui viennent contredire nos observations du graphique Q-Q residuals, on ne peut alors pas conclure positivement quant à la validité du modèle. 
 ## 2.2. Comportement par rapport au nombre de sommets : étude du comportement moyen
 
 Récupération du temps moyen.
