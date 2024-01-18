@@ -247,21 +247,30 @@ seqn. Récupérer les principales statistiques. Faire l’étude des résidus. C
 temps.moy.lm <- lm(log(temps.moy)^2~seqn)
 summary(temps.moy.lm)
 ```
-Conlusion : le modèle est valide car les coefficients sont significatifs et le R² est proche de 1.
-Mais également, les hypothèses sur les résidus sont vérifiées car le test de shapiro est supérieur à 0.05.
+Coefficients :
+Les coefficients du modèle sont les suivants :
 
+Intercept : 82.2045
+Vect_dim (seqn) : 14.7581
+Les coefficients estimés indiquent l'effet sur le carré du logarithme des temps moyens pour une unité d'augmentation de la séquence.
 
-```{r,echo=TRUE}
-```
-Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de $n$.
+Statistiques de Test :
+On observe des valeurs de p très faibles (<2e-16) sur les statistiques de test, indiquant une forte validité. 
 
-Analyse de la validité du modèle :
+Les résidus semblent être centrés autour de zéro et sont répartis de manière relativement homogène, suggérant une bonne adéquation du modèle.
 
-  * pertinence des coefficients et du modèle,
+Résidual Standard Error :
+L'erreur standard des résidus est de 28.06, elle resprésente une mesure la dispersion des résidus.
 
-  * étude des hypothèses sur les résidus.
+R-squared : 0.8705
+R-squared ajusté : 0.8697
+Ce coefficient élevé de détermination suggère une bonne adéquation du modèle aux données.
 
+Test de Normalité Shapiro-Wilk :
+Egalement les hypothèses sur les résidus sont vérifiées car le test de shapiro est supérieur à 0.05.
 
+Conclusion :
+En conclusion, le modèle de régression linéaire simple semble être statistiquement significatif et présente une adéquation acceptable avec les données. 
 
 ## 2.3. Comportement par rapport à la structure du graphe
 
@@ -278,7 +287,8 @@ data.graph$sqrt.dim <- sqrt(donnees$dim)
 data.graph$dim <- c()
 data.graph$tps <- c()
 ```
-Ensuite on trace els modèles de régression linéaires demandés.
+Ensuite on trace les modèles de régression linéaires demandés.
+
 ```{r, echo = TRUE}
 regressions <- list()
 
@@ -289,21 +299,24 @@ for (var in names(data.graph)) {
     regressions[[var]] <- lm(log.tps ~ data.graph[[var]], data = data.graph)
 }
 
-par(mfrow = c(3, 2))
+par(mfrow = c(3, 2),mar = c(1, 8, 2, 1))
 for (var in names(data.graph)) {
     if (var == "log.tps") {
         next
     }
-    plot(regressions[[var]], main = var, which = 1:5)
+    plot(regressions[[var]], main = "var", which = 1:5)
 }
 ```
+Nous pouvons observer que les variables avec des valeurs p élevées sont mean.dist, sd.deg, diameter. Cela suggère qu'elles ne sont pas statistiquement significatives dans le modèle et donc potenitellement non pertinente.
+
 ```{r}
+
 regressions.group <- lm(log.tps ~ ., data = data.graph)
 summary(regressions.group)
-par(mfrow = c(3, 2))
+par(mfrow = c(3, 2),mar = c(4, 8, 2, 1))
 plot(regressions.group, which = 1:6)
 ```
-
+On observe 
 ### Mise en oeuvre de la selection de variables
 
 On sélectionne les variables qui sont le plus pertinente au modèle de régression linéaire.
