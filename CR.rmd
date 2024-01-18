@@ -325,13 +325,27 @@ summary(regressions.group)
 par(mfrow = c(3, 2),mar = c(4, 8, 2, 1))
 plot(regressions.group, which = 1:6)
 ```
-On observe 
+Ces variables ont des coefficients estimés avec des valeurs p élevées, suggérant qu'elles ne sont pas statistiquement significatives pour expliquer la variation de la variable dépendante (log.tps). En d'autres termes, elles n'apportent pas de contribution significative au modèle.
+La p-valeur de diameter est le plus élevé, il pourrait donc être pertinent de l'enlever de pour refaire de nouveaux tests.
+
 ### Mise en oeuvre de la selection de variables
 
 On sélectionne les variables qui sont le plus pertinente au modèle de régression linéaire.
+
 ```{r, echo = TRUE}
 regressions.aiced <- step(regressions.group)
 plot(regressions.aiced)
 summary(regressions.aiced)
 ```
 ```
+
+Le processus de sélection de variables a été réalisé en utilisant le critère AIC (Critère d'Information d'Akaike). Nous pouvons clairement observer que la variable diameter a été exclue du modèle lors de la sélection de variables.
+
+L'AIC initial est de -165.23.
+Le modèle final, sans la variable diameter, a un AIC de -167.04, ce qui indique une amélioration par rapport au modèle initial.
+
+Les coefficients estimés, les valeurs p associées et les intervalles de confiance pour chaque variable montrent que toutes ces variables sont statistiquement significatives (les valeurs p sont toutes inférieures à 0.05).
+
+Le modèle final a un R carré de 0.9846, ce qui suggère qu'il explique très bien la variabilité des données.
+
+Le F-statistic global est très élevé, avec un p-value très faible (< 2.2e-16), indiquant que la pertinence de ce model. 
