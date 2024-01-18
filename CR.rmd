@@ -181,7 +181,7 @@ microbenchmark(TSPsolve(dist,method='arbitrary_insertion'),TSPsolve(dist,method=
 
 #boxplot(moyennes)
 ```
-On remarque alors directement, que les deux algorithmes les plus performants en terme de vitesse sont "arbitrary-insertion", "two_opt" et "nearest". Cependant, ces 3 algorithmes sont aussi ceux qui sont le moins efficaces, fournissant de moins bons résultats. Un cran au dessus, il y a l'algorithme "repetitive_nn" qui fournit une meilleure solution mais qui est tout de même plus long que les 3 autres algorithmes. Finalement, le plus lent des algorithmes est le "branch", cependant c'est aussi celui qui fournit la meilleure solution. 
+On remarque alors directement, que les deux algorithmes les plus performants en terme de vitesse sont "arbitrary-insertion", "two_opt" et "nearest". Cependant, ces 3 algorithmes sont aussi ceux qui sont le moins efficaces, fournissant de moins bons résultats. Un cran au-dessus, il y a l'algorithme "repetitive_nn" qui fournit une meilleure solution, mais qui est tout de même plus long que les 3 autres algorithmes. Finalement, le plus lent des algorithmes est le "branch", cependant c'est aussi celui qui fournit la meilleure solution.
 
 Il y a donc un compromis à réaliser, en fonction de la qualité de la solution qu'on recherche et du temps que l'on est prêt à dédier à la recherche de cette solution. 
 
@@ -337,8 +337,6 @@ regressions.aiced <- step(regressions.group)
 plot(regressions.aiced)
 summary(regressions.aiced)
 ```
-```
-
 Le processus de sélection de variables a été réalisé en utilisant le critère AIC (Critère d'Information d'Akaike). Nous pouvons clairement observer que la variable diameter a été exclue du modèle lors de la sélection de variables.
 
 L'AIC initial est de -165.23.
